@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>RT Digital PRO</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: linear-gradient(to right, #1e3c72, #2a5298);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .card {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      width: 350px;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #2a5298;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #1e3c72;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card" id="loginCard">
+  <h2>Login Petugas</h2>
+  <input type="text" id="username" placeholder="Username">
+  <input type="password" id="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <p id="error" style="color:red;"></p>
+</div>
+
+<div class="card hidden" id="dashboard">
+  <h2>Dashboard RT Digital</h2>
+  <p>Selamat datang, <span id="userDisplay"></span></p>
+  <button onclick="logout()">Logout</button>
+</div>
+
+<script>
+  const users = {
+    "petugas1": "rt02keren",
+    "admin": "admin123"
+  };
+
+  function login() {
+    const user = document.getElementById("username").value;
+    const pass = document.getElementById("password").value;
+
+    if(users[user] && users[user] === pass){
+      document.getElementById("loginCard").classList.add("hidden");
+      document.getElementById("dashboard").classList.remove("hidden");
+      document.getElementById("userDisplay").innerText = user;
+    } else {
+      document.getElementById("error").innerText = "Username atau password salah!";
+    }
+  }
+
+  function logout(){
+    document.getElementById("dashboard").classList.add("hidden");
+    document.getElementById("loginCard").classList.remove("hidden");
+  }
+</script>
+
+</body>
+</html>
