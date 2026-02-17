@@ -1,93 +1,52 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>RT Digital PRO</title>
-  <style>
-    body {
-      font-family: Arial;
-      background: linear-gradient(to right, #1e3c72, #2a5298);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-
-    .card {
-      background: white;
-      padding: 30px;
-      border-radius: 15px;
-      width: 350px;
-      text-align: center;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-    }
-
-    input {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-    }
-
-    button {
-      width: 100%;
-      padding: 10px;
-      background: #2a5298;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #1e3c72;
-    }
-
-    .hidden {
-      display: none;
-    }
-  </style>
+  <title>Login Petugas RT</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<div class="card" id="loginCard">
-  <h2>Login Petugas</h2>
-  <input type="text" id="username" placeholder="Username">
-  <input type="password" id="password" placeholder="Password">
-  <button onclick="login()">Login</button>
-  <p id="error" style="color:red;"></p>
+<div class="container">
+  <div class="card">
+    <h2>Login Petugas</h2>
+
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
+    <button id="loginBtn">Login</button>
+
+    <p id="errorMsg" style="color:#ef4444;"></p>
+  </div>
 </div>
 
-<div class="card hidden" id="dashboard">
-  <h2>Dashboard RT Digital</h2>
-  <p>Selamat datang, <span id="userDisplay"></span></p>
-  <button onclick="logout()">Logout</button>
-</div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+import { firebaseConfig } from "./firebase-config.js";
 
-<script>
-  const users = {
-    "petugas1": "rt02keren",
-    "admin": "admin123"
-  };
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
-  function login() {
-    const user = document.getElementById("username").value;
-    const pass = document.getElementById("password").value;
+document.getElementById("loginBtn").addEventListener("click", () => {
+  const username = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
 
-    if(users[user] && users[user] === pass){
-      document.getElementById("loginCard").classList.add("hidden");
-      document.getElementById("dashboard").classList.remove("hidden");
-      document.getElementById("userDisplay").innerText = user;
-    } else {
-      document.getElementById("error").innerText = "Username atau password salah!";
-    }
+  const email = username + "@rt02.local";
+
+  signInWithEmailAndPassword(auth, email, password)
+  .then(() => {
+    window.location.href = "dashboard.html";
+  })
+  .catch(err => {
+    document.getElementById("errorMsg").innerText = "Login gagal, cek username & password!";
+  });
+});
+
+// stay logged in
+onAuthStateChanged(auth, user => {
+  if(user){
+    window.location.href = "dashboard.html";
   }
-
-  function logout(){
-    document.getElementById("dashboard").classList.add("hidden");
-    document.getElementById("loginCard").classList.remove("hidden");
-  }
+});
 </script>
 
 </body>
