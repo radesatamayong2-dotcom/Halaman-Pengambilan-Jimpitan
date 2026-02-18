@@ -1,172 +1,267 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Jimpitan RT 02 RW 03</title>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<style>
+:root{
+  --bg:#f4f6f9;
+  --card:#ffffff;
+  --text:#111827;
+}
+
+.dark{
+  --bg:#0f172a;
+  --card:#1e293b;
+  --text:#ffffff;
+}
+
+body{
+  margin:0;
+  font-family:'Segoe UI',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+
+header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:20px;
+  flex-wrap:wrap;
+}
+
+button{
+  padding:8px 14px;
+  border-radius:8px;
+  border:none;
+  cursor:pointer;
+  font-weight:600;
+  margin:3px;
+}
+
+.card{
+  background:var(--card);
+  margin:20px;
+  padding:20px;
+  border-radius:15px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.08);
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+th,td{
+  padding:10px;
+  border-bottom:1px solid #ddd;
+}
+
+.grafik-container{
+  max-width:600px;
+  margin:auto;
+}
+
+footer{
+  text-align:center;
+  padding:30px;
+  font-size:14px;
+  opacity:0.7;
+}
+</style>
+</head>
 
 <body>
 
-<h2>Dashboard Petugas Jimpitan</h2>
-
-<!-- ================= INPUT SETORAN ================= -->
-<div class="card">
-    <h3>Input Setoran</h3>
-    <input type="date" id="tanggal">
-    <input type="text" id="nama" placeholder="Nama Warga">
-    <input type="number" id="jumlah" placeholder="Jumlah Setoran">
-    <button onclick="tambahData()">Tambah</button>
-</div>
-
-<!-- ================= TOTAL ================= -->
-<div class="card">
-    <h3>Total Saldo</h3>
-    <h2 id="totalSaldo">Rp 0</h2>
-</div>
-
-<!-- ================= GRAFIK ================= -->
-<div class="card">
-    <h3>Grafik Setoran</h3>
-    <div style="width:100%; max-width:600px; margin:auto;">
-        <canvas id="grafik"></canvas>
-    </div>
-</div>
-
-<!-- ================= TABEL ================= -->
-<div class="card">
-    <h3>Riwayat Setoran</h3>
-    <table border="1" width="100%">
-        <thead>
-            <tr>
-                <th>Tanggal</th>
-                <th>Nama</th>
-                <th>Jumlah</th>
-                <th>Aksi</th>
-            </tr>
-        </thead>
-        <tbody id="tabelData"></tbody>
-    </table>
-</div>
-
-<!-- ================= EXPORT ================= -->
-<div class="card">
+<header>
+  <h2>Dashboard Jimpitan RT 02 RW 03</h2>
+  <div id="jam"></div>
+  <div>
+    <button onclick="toggleTheme()">Tema</button>
     <button onclick="exportPDF()">Export PDF</button>
+    <button onclick="exportExcel()">Export Excel</button>
+  </div>
+</header>
+
+<!-- INPUT DI ATAS -->
+<div class="card">
+  <h3>Input Setoran</h3>
+  <input type="date" id="tanggal">
+  <input type="text" id="nama" placeholder="Nama Warga">
+  <input type="number" id="jumlah" placeholder="Jumlah">
+  <button onclick="tambahData()">Tambah</button>
 </div>
+
+<!-- RINGKASAN -->
+<div class="card">
+  <h3>Total Saldo</h3>
+  <h2 id="totalSaldo">Rp 0</h2>
+</div>
+
+<!-- GRAFIK BAR -->
+<div class="card">
+  <h3>Grafik Setoran</h3>
+  <div class="grafik-container">
+    <canvas id="chartBar"></canvas>
+  </div>
+</div>
+
+<!-- GRAFIK DONUT -->
+<div class="card">
+  <h3>Status Pembayaran</h3>
+  <div class="grafik-container">
+    <canvas id="chartDonut"></canvas>
+  </div>
+</div>
+
+<!-- TABEL -->
+<div class="card">
+  <h3>Riwayat Setoran</h3>
+  <table id="tabelData">
+    <thead>
+      <tr>
+        <th>Tanggal</th>
+        <th>Nama</th>
+        <th>Jumlah</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<footer>
+Aplikasi Keuangan RT 02 RW 03 Jambewangi V2.3<br>
+copyright 2026 Design by Giyoung.Net
+</footer>
 
 <script>
 
 let dataSetoran = JSON.parse(localStorage.getItem("dataSetoran")) || [];
-let chart;
+let chartBar, chartDonut;
 
-function simpanData() {
-    localStorage.setItem("dataSetoran", JSON.stringify(dataSetoran));
+function toggleTheme(){
+  document.body.classList.toggle("dark");
 }
 
-function formatRupiah(angka) {
-    return "Rp " + angka.toLocaleString("id-ID");
+function updateJam(){
+  const now=new Date();
+  document.getElementById("jam").innerHTML=
+  now.toLocaleDateString()+" - "+now.toLocaleTimeString();
+}
+setInterval(updateJam,1000);
+
+function formatRupiah(angka){
+  return "Rp "+angka.toLocaleString("id-ID");
 }
 
-function tambahData() {
-    const tanggal = document.getElementById("tanggal").value;
-    const nama = document.getElementById("nama").value;
-    const jumlah = parseInt(document.getElementById("jumlah").value);
+function simpanData(){
+  localStorage.setItem("dataSetoran",JSON.stringify(dataSetoran));
+}
 
-    if (!tanggal || !nama || !jumlah) {
-        alert("Isi semua data!");
-        return;
+function tambahData(){
+  const tanggal=document.getElementById("tanggal").value;
+  const nama=document.getElementById("nama").value;
+  const jumlah=parseInt(document.getElementById("jumlah").value);
+
+  if(!tanggal||!nama||!jumlah){alert("Isi semua data");return;}
+
+  dataSetoran.push({tanggal,nama,jumlah});
+  simpanData();
+  renderAll();
+}
+
+function hapusData(index){
+  dataSetoran.splice(index,1);
+  simpanData();
+  renderAll();
+}
+
+function renderAll(){
+  renderTable();
+  renderCharts();
+}
+
+function renderTable(){
+  const tbody=document.querySelector("#tabelData tbody");
+  tbody.innerHTML="";
+  let total=0;
+
+  dataSetoran.forEach((item,i)=>{
+    total+=item.jumlah;
+    tbody.innerHTML+=`
+      <tr>
+        <td>${item.tanggal}</td>
+        <td>${item.nama}</td>
+        <td>${formatRupiah(item.jumlah)}</td>
+        <td><button onclick="hapusData(${i})">Hapus</button></td>
+      </tr>`;
+  });
+
+  document.getElementById("totalSaldo").innerText=formatRupiah(total);
+}
+
+function renderCharts(){
+
+  const nama=dataSetoran.map(x=>x.nama);
+  const jumlah=dataSetoran.map(x=>x.jumlah);
+
+  if(chartBar) chartBar.destroy();
+  chartBar=new Chart(document.getElementById("chartBar"),{
+    type:"bar",
+    data:{
+      labels:nama,
+      datasets:[{label:"Setoran",data:jumlah}]
+    },
+    options:{responsive:true,maintainAspectRatio:true}
+  });
+
+  let lunas=0,belum=0;
+  dataSetoran.forEach(x=>{
+    if(x.jumlah>=5000) lunas++;
+    else belum++;
+  });
+
+  if(chartDonut) chartDonut.destroy();
+  chartDonut=new Chart(document.getElementById("chartDonut"),{
+    type:"doughnut",
+    data:{
+      labels:["Lunas","Belum"],
+      datasets:[{data:[lunas,belum]}]
     }
-
-    dataSetoran.push({ tanggal, nama, jumlah });
-    simpanData();
-    tampilkanData();
-    updateGrafik();
-
-    document.getElementById("tanggal").value = "";
-    document.getElementById("nama").value = "";
-    document.getElementById("jumlah").value = "";
+  });
 }
 
-function hapusData(index) {
-    dataSetoran.splice(index, 1);
-    simpanData();
-    tampilkanData();
-    updateGrafik();
+async function exportPDF(){
+  const { jsPDF }=window.jspdf;
+  const pdf=new jsPDF("p","mm","a4");
+
+  const canvas=await html2canvas(document.body,{scale:2});
+  const img=canvas.toDataURL("image/png");
+
+  const imgWidth=190;
+  const imgHeight=canvas.height*imgWidth/canvas.width;
+
+  pdf.addImage(img,"PNG",10,10,imgWidth,imgHeight);
+  pdf.save("Laporan_Jimpitan.pdf");
 }
 
-function tampilkanData() {
-    const tabel = document.getElementById("tabelData");
-    tabel.innerHTML = "";
-
-    let total = 0;
-
-    dataSetoran.forEach((item, index) => {
-        total += item.jumlah;
-        tabel.innerHTML += `
-            <tr>
-                <td>${item.tanggal}</td>
-                <td>${item.nama}</td>
-                <td>${formatRupiah(item.jumlah)}</td>
-                <td><button onclick="hapusData(${index})">Hapus</button></td>
-            </tr>
-        `;
-    });
-
-    document.getElementById("totalSaldo").innerText = formatRupiah(total);
+function exportExcel(){
+  const ws=XLSX.utils.json_to_sheet(dataSetoran);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Data");
+  XLSX.writeFile(wb,"Laporan_Jimpitan.xlsx");
 }
 
-function updateGrafik() {
-    const ctx = document.getElementById("grafik").getContext("2d");
-
-    if (chart) chart.destroy();
-
-    const labels = dataSetoran.map(item => item.nama);
-    const data = dataSetoran.map(item => item.jumlah);
-
-    chart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Jumlah Setoran',
-                data: data,
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
-        }
-    });
-}
-
-async function exportPDF() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    doc.text("Laporan Jimpitan", 14, 15);
-
-    let y = 25;
-    dataSetoran.forEach(item => {
-        doc.text(`${item.tanggal} - ${item.nama} - ${formatRupiah(item.jumlah)}`, 14, y);
-        y += 8;
-    });
-
-    // Capture grafik
-    const canvas = document.getElementById("grafik");
-    const imgData = canvas.toDataURL("image/png");
-
-    doc.addPage();
-    doc.text("Grafik Setoran", 14, 15);
-    doc.addImage(imgData, "PNG", 15, 25, 180, 90);
-
-    doc.save("laporan-jimpitan.pdf");
-}
-
-tampilkanData();
-updateGrafik();
+renderAll();
 
 </script>
 
 </body>
+</html>
