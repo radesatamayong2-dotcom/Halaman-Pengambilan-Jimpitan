@@ -1,52 +1,174 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Login Petugas RT</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<title>Dashboard Jimpitan RT 02 RW 03</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root{
+  --bg:#f4f6f9;
+  --card:#ffffff;
+  --text:#111827;
+}
+
+.dark{
+  --bg:#0f172a;
+  --card:#1e293b;
+  --text:#ffffff;
+}
+
+body{
+  margin:0;
+  font-family:'Segoe UI',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+
+header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:20px;
+}
+
+button{
+  padding:8px 14px;
+  border-radius:8px;
+  border:none;
+  cursor:pointer;
+  font-weight:600;
+}
+
+.btn-primary{background:#2563eb;color:white;}
+.btn-success{background:#10b981;color:white;}
+.btn-gray{background:#e5e7eb;}
+
+.card{
+  background:var(--card);
+  margin:20px;
+  padding:20px;
+  border-radius:15px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.08);
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+th,td{
+  padding:10px;
+  border-bottom:1px solid #ddd;
+}
+.status-lunas{color:green;font-weight:bold;}
+.status-kurang{color:red;font-weight:bold;}
+.status-lebih{color:blue;font-weight:bold;}
+</style>
 </head>
+
 <body>
 
-<div class="container">
-  <div class="card">
-    <h2>Login Petugas</h2>
-
-    <input type="text" id="username" placeholder="Username">
-    <input type="password" id="password" placeholder="Password">
-    <button id="loginBtn">Login</button>
-
-    <p id="errorMsg" style="color:#ef4444;"></p>
+<header>
+  <h2>Dashboard Jimpitan RT 02 RW 03</h2>
+  <div>
+    <button class="btn-primary" onclick="toggleTheme()">Tema</button>
+    <button class="btn-success" onclick="window.open('LINK_GOOGLE_FORM')">Input Data</button>
   </div>
+</header>
+
+<div class="card">
+  <h3>Tabel Pendapatan</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Nama</th>
+        <th>Total Bayar</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="dataTable"></tbody>
+  </table>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
-import { firebaseConfig } from "./firebase-config.js";
+<div class="card">
+  <canvas id="chartBar"></canvas>
+</div>
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+<script>
+const SHEET_URL = "LINK_CSV_KAMU_DISINI";
 
-document.getElementById("loginBtn").addEventListener("click", () => {
-  const username = document.getElementById("username").value.trim();
-  const password = document.getElementById("password").value.trim();
+const IURAN = 5000;
+const MULAI = new Date("2026-02-01");
 
-  const email = username + "@rt02.local";
+function toggleTheme(){
+  document.body.classList.toggle("dark");
+}
 
-  signInWithEmailAndPassword(auth, email, password)
-  .then(() => {
-    window.location.href = "dashboard.html";
-  })
-  .catch(err => {
-    document.getElementById("errorMsg").innerText = "Login gagal, cek username & password!";
+function hitungMinggu(){
+  const now = new Date();
+  const selisih = now - MULAI;
+  return Math.floor(selisih/(1000*60*60*24*7));
+}
+
+fetch(SHEET_URL)
+.then(res=>res.text())
+.then(data=>{
+  const rows = data.split("\n").slice(1);
+  let warga={};
+
+  rows.forEach(r=>{
+    const cols = r.split(",");
+    const nama = cols[1];
+    const nominal = parseInt(cols[2]);
+
+    if(!warga[nama]) warga[nama]=0;
+    warga[nama]+=nominal;
   });
+
+  renderTable(warga);
+  renderChart(warga);
 });
 
-// stay logged in
-onAuthStateChanged(auth, user => {
-  if(user){
-    window.location.href = "dashboard.html";
-  }
-});
+function renderTable(data){
+  const mingguSekarang = hitungMinggu();
+  const tbody = document.getElementById("dataTable");
+  tbody.innerHTML="";
+
+  Object.keys(data).forEach(nama=>{
+    const total = data[nama];
+    const mingguBayar = Math.floor(total/IURAN);
+    const selisih = mingguBayar - mingguSekarang;
+
+    let status,cls;
+
+    if(selisih===0){status="Lunas";cls="status-lunas";}
+    else if(selisih>0){status="Lebih "+selisih+" minggu";cls="status-lebih";}
+    else{status="Kurang "+Math.abs(selisih)+" minggu";cls="status-kurang";}
+
+    tbody.innerHTML+=`
+      <tr>
+        <td>${nama}</td>
+        <td>Rp ${total.toLocaleString()}</td>
+        <td class="${cls}">${status}</td>
+      </tr>
+    `;
+  });
+}
+
+function renderChart(data){
+  const ctx=document.getElementById('chartBar');
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:Object.keys(data),
+      datasets:[{
+        label:'Total Setoran',
+        data:Object.values(data),
+        backgroundColor:'#3b82f6'
+      }]
+    }
+  });
+}
 </script>
 
 </body>
